@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  * {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  body {
+    background-color: #FFF0F3;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-[#FF4D6D] to-[#A4133C] text-white rounded-md px-4 py-2 font-medium shadow-md hover:from-[#C9184A] hover:to-[#800F2F] hover:shadow-lg transition-all duration-200;
+  }
+  
+  .input-field {
+    @apply border border-[#FFB3C1] rounded-md bg-white placeholder-[#C9184A] px-3 py-2 focus:ring-2 focus:ring-[#FF4D6D] focus:border-[#FF4D6D] transition-colors;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-[#FFCCD5] p-6;
+  }
+  
+  .heading {
+    @apply font-bold text-[#590D22];
+  }
+  
+  .label {
+    @apply text-[#800F2F] font-medium;
+  }
+  
+  .success-alert {
+    @apply bg-[#FFB3C1] text-[#590D22] p-3 rounded-md;
+  }
+  
+  .warning-alert {
+    @apply bg-[#FF8FA3] text-[#800F2F] p-3 rounded-md;
+  }
+  
+  .danger-alert {
+    @apply bg-[#FF4D6D] text-white p-3 rounded-md;
+  }
+}
