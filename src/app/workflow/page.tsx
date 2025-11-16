@@ -10,18 +10,27 @@ interface WorkflowWithBill extends WorkflowJob {
 }
 
 const stages = [
-  { key: 'cutting', label: 'Cutting', color: 'bg-[#FF4D6D]' },
-  { key: 'stitching', label: 'Stitching', color: 'bg-[#C9184A]' },
-  { key: 'finishing', label: 'Finishing', color: 'bg-[#A4133C]' },
-  { key: 'packaging', label: 'Packaging', color: 'bg-[#800F2F]' },
-  { key: 'delivered', label: 'Delivered', color: 'bg-[#590D22]' }
+  { key: 'cutting', label: 'Cutting', color: 'bg-blue-500', bgColor: 'bg-blue-50', icon: '✂️' },
+  { key: 'stitching', label: 'Stitching', color: 'bg-red-500', bgColor: 'bg-red-50', icon: '🧵' },
+  { key: 'finishing', label: 'Finishing', color: 'bg-purple-500', bgColor: 'bg-purple-50', icon: '熨' },
+  { key: 'packaging', label: 'Packaging', color: 'bg-green-500', bgColor: 'bg-green-50', icon: '📦' },
+  { key: 'delivered', label: 'Delivered', color: 'bg-violet-500', bgColor: 'bg-violet-50', icon: '✅' }
 ];
+
+const stageDescriptions = {
+  cutting: "All garments start here. After cutting, they are routed to stitching based on garment type.",
+  stitching: "Garments are stitched according to design specifications and measurements.",
+  finishing: "Final touches, pressing, and quality checks are performed in this stage.",
+  packaging: "Garments are carefully packaged and prepared for delivery to customers.",
+  delivered: "Completed orders are moved to this stage after successful delivery."
+};
 
 export default function WorkflowPage() {
   const [workflows, setWorkflows] = useState<WorkflowWithBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('cutting');
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -176,23 +185,30 @@ export default function WorkflowPage() {
     return `ST${billId.slice(-6).toUpperCase()}`;
   };
 
+  // Get the active stage data
+  const activeStage = stages.find(stage => stage.key === activeTab) || stages[0];
+
   return (
-    <div className="min-h-screen p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4 md:p-8">
+      {/* Background elements */}
+      <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
+        <div className="absolute right-0 top-1/4 w-96 h-96 rounded-full bg-purple-200 opacity-20 blur-3xl"></div>
+        <div className="absolute right-1/3 top-1/2 w-64 h-64 rounded-full bg-pink-200 opacity-20 blur-3xl"></div>
+      </div>
+      
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-[#FFCCD5] p-6 mb-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-3xl font-bold text-[#590D22]">Garment Workflow Dashboard</h1>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/billing"
-                className="bg-gradient-to-r from-[#FF4D6D] to-[#A4133C] hover:from-[#C9184A] hover:to-[#800F2F] text-white px-6 py-2 rounded-md font-medium shadow-md transition-all duration-200 text-center"
-              >
-                Create New Bill
-              </Link>
-              <Link
-                href="/"
-                className="bg-gradient-to-r from-[#FF4D6D] to-[#A4133C] hover:from-[#C9184A] hover:to-[#800F2F] text-white px-6 py-2 rounded-md font-medium shadow-md transition-all duration-200 text-center"
+        {/* Top Navigation Bar */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white rounded-2xl shadow-lg p-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Garment Workflow Dashboard</h1>
+              <p className="text-sm text-gray-600 mt-1">Track garment production through all stages</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-700 font-medium">Welcome, Admin</span>
+              <Link 
+                href="/" 
+                className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
               >
                 Back to Home
               </Link>
@@ -200,204 +216,202 @@ export default function WorkflowPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="bg-white rounded-md p-8 text-center shadow-sm border border-gray-200">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-700 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading workflows...</p>
+        {/* Workflow Stage Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          {stages.map((stage) => (
+            <div 
+              key={stage.key} 
+              className={`${stage.bgColor} rounded-2xl shadow-lg p-6 border border-gray-100 transition-all hover:shadow-xl`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-2xl">{stage.icon}</span>
+                <div className={`w-3 h-3 rounded-full ${stage.color}`}></div>
+              </div>
+              <h3 className="font-bold text-gray-800 mb-1">{stage.label}</h3>
+              <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+                {stageCounts[stage.key] || 0}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Workflow Container */}
+        <div className="bg-white rounded-3xl shadow-xl p-8">
+          {/* Tab Navigation Bar */}
+          <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-100 pb-4">
+            {stages.map((stage) => (
+              <button
+                key={stage.key}
+                onClick={() => setActiveTab(stage.key)}
+                className={`px-5 py-3 rounded-xl font-medium transition-all ${
+                  activeTab === stage.key
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-500 text-white shadow-lg'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {stage.label}
+              </button>
+            ))}
           </div>
-        ) : (
-          /* Workflow Stages - Stacked Full-Width Sections */
-          <div className="space-y-8">
-            {stages.map((stage) => {
-              const stageWorkflows = getWorkflowsForStage(stage.key);
-              
-              // Stage descriptions
-              const stageDescriptions = {
-                cutting: "All garments start here. After cutting, they are routed to stitching.",
-                stitching: "Garments are stitched based on type, before finishing.",
-                finishing: "Final touches are applied here before packaging.",
-                packaging: "Garments are packed and prepared for delivery.",
-                delivered: "Completed jobs are moved here."
-              };
-              
-              return (
-                <div key={stage.key} className="bg-white rounded-md shadow-sm border border-gray-200">
-                  {/* Stage Header */}
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h2 className="text-2xl font-bold text-gray-900">{stage.label}</h2>
-                      <span className={`px-3 py-1 rounded-md text-sm font-medium ${
-                        stage.key === 'cutting' ? 'bg-[#FFB3C1] text-[#590D22]' :
-                        stage.key === 'stitching' ? 'bg-[#FF8FA3] text-[#590D22]' :
-                        stage.key === 'finishing' ? 'bg-[#FF758F] text-[#590D22]' :
-                        stage.key === 'packaging' ? 'bg-[#C9184A] text-white' :
-                        'bg-[#590D22] text-white'
-                      }`}>
-                        {stageWorkflows.length} job{stageWorkflows.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    {/* Description Banner */}
-                    <div className={`p-3 rounded-md border text-sm italic ${
-                      stage.key === 'cutting' ? 'bg-[#FFB3C1] border-[#FF8FA3] text-[#590D22]' :
-                      stage.key === 'stitching' ? 'bg-[#FF8FA3] border-[#FF758F] text-[#590D22]' :
-                      stage.key === 'finishing' ? 'bg-[#FF758F] border-[#C9184A] text-[#590D22]' :
-                      stage.key === 'packaging' ? 'bg-[#C9184A] border-[#A4133C] text-white' :
-                      'bg-[#590D22] border-[#800F2F] text-white'
-                    }`}>
-                      {stageDescriptions[stage.key as keyof typeof stageDescriptions]}
-                    </div>
+
+          {/* Stage Banner */}
+          <div className={`rounded-2xl p-6 mb-8 ${activeStage.bgColor} border border-gray-100`}>
+            <p className="text-gray-700">{stageDescriptions[activeTab as keyof typeof stageDescriptions]}</p>
+          </div>
+
+          {/* Stage Content Area */}
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading workflows...</p>
+            </div>
+          ) : (
+            <div>
+              {getWorkflowsForStage(activeTab).length === 0 ? (
+                // Empty State
+                <div className="text-center py-16">
+                  <div className="inline-block p-4 rounded-full bg-gray-100 mb-4">
+                    <span className="text-3xl">📭</span>
                   </div>
-                  
-                  {/* Job Cards */}
-                  <div className="p-6">
-                    {stageWorkflows.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="text-gray-400">No jobs in this stage</div>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        {stageWorkflows.map((workflow) => (
-                          <div
-                            key={workflow._id}
-                            className="bg-white rounded-md border border-[#FFCCD5] shadow-sm hover:shadow-md transition-shadow p-6 border-t-4 border-t-[#FF4D6D]"
-                          >
-                            <div className="space-y-4">
-                              {/* Order ID + Customer Name */}
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h3 className="text-lg font-bold text-gray-900">
-                                    Order {generateCustomerId(workflow.billId)}
-                                  </h3>
-                                  <p className="text-gray-600 font-medium">{workflow.customerName}</p>
-                                </div>
-                                <span className={`px-3 py-1 rounded-md text-sm font-medium ${
-                                  stage.key === 'delivered' ? 'bg-[#590D22] text-white' :
-                                  stage.key === 'cutting' ? 'bg-[#FFCCD5] text-[#590D22]' :
-                                  'bg-[#FF8FA3] text-[#590D22]'
-                                }`}>
-                                  {stage.key === 'delivered' ? 'Completed' :
-                                   stage.key === 'cutting' ? 'Pending' : 'In Progress'}
-                                </span>
-                              </div>
-                              
-                              {/* Garment Type */}
-                              {workflow.bill && (
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm font-medium text-gray-500">Garment Type:</span>
-                                  <span className="text-gray-900 capitalize font-medium">{workflow.bill.garmentType}</span>
-                                </div>
-                              )}
-                              
-                              {/* Due Date */}
-                              {workflow.bill && (
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm font-medium text-gray-500">Due Date:</span>
-                                  <span className="text-gray-900 font-medium">{formatDate(workflow.bill.dueDate)}</span>
-                                </div>
-                              )}
-                              
-                              {/* Bill Info */}
-                              {workflow.bill && (
-                                <div className="bg-gray-50 rounded-md p-4">
-                                  <h4 className="text-sm font-bold text-gray-700 mb-3">Bill Information</h4>
-                                  <div className="grid grid-cols-3 gap-4 text-sm">
-                                    <div>
-                                      <span className="text-gray-500">Total:</span>
-                                      <div className="font-bold text-gray-900">₹{(workflow.bill.rate * workflow.bill.quantity).toFixed(2)}</div>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-500">Advance:</span>
-                                      <div className="font-bold text-gray-900">₹{(workflow.bill.rate * workflow.bill.quantity - workflow.bill.balance).toFixed(2)}</div>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-500">Balance:</span>
-                                      <div className="font-bold text-red-600">₹{workflow.bill.balance.toFixed(2)}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Measurements - Clean 2-Column Grid */}
-                              {workflow.bill?.measurements && Object.values(workflow.bill.measurements).some(v => v) && (
-                                <div>
-                                  <h4 className="text-sm font-bold text-gray-700 mb-3">Measurements</h4>
-                                  <div className="grid grid-cols-2 gap-3 text-sm">
-                                    {Object.entries(workflow.bill.measurements)
-                                      .filter(([key, value]) => value)
-                                      .map(([key, value]) => (
-                                        <div key={key} className="bg-gray-50 rounded-md p-3 flex justify-between">
-                                          <span className="text-gray-600 capitalize">{key}:</span>
-                                          <span className="font-medium text-gray-900">{value as number}"</span>
-                                        </div>
-                                      ))
-                                    }
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Design Images */}
-                              {workflow.bill?.images && workflow.bill.images.length > 0 && (
-                                <div>
-                                  <h4 className="text-sm font-bold text-gray-700 mb-2">Design Images</h4>
-                                  <div className="flex items-center space-x-2 text-sm text-blue-600">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                    </svg>
-                                    <span>{workflow.bill.images.length} image{workflow.bill.images.length !== 1 ? 's' : ''} attached</span>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Tailor Notes */}
-                              {workflow.bill?.tailorNotes && (
-                                <div>
-                                  <h4 className="text-sm font-bold text-gray-700 mb-2">Tailor Notes</h4>
-                                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
-                                    {workflow.bill.tailorNotes}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Action Buttons */}
-                              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                                <button
-                                  onClick={() => handleDeleteJob(workflow._id!, workflow.customerName)}
-                                  disabled={deleteLoading === workflow._id}
-                                  className="bg-[#FF4D6D] hover:bg-[#C9184A] text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
-                                >
-                                  {deleteLoading === workflow._id ? 'Deleting...' : 'Delete'}
-                                </button>
-                                {stage.key !== 'cutting' && (
-                                  <button
-                                    onClick={() => moveToPreviousStage(workflow._id!, workflow.stage)}
-                                    className="bg-[#FFCCD5] hover:bg-[#FFB3C1] text-[#590D22] px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                                  >
-                                    ← Back
-                                  </button>
-                                )}
-                                {stage.key !== 'delivered' && (
-                                  <button
-                                    onClick={() => moveToNextStage(workflow._id!, workflow.stage)}
-                                    className="bg-gradient-to-r from-[#FF4D6D] to-[#A4133C] hover:from-[#C9184A] hover:to-[#800F2F] text-white px-4 py-2 rounded-md text-sm font-medium shadow-md transition-all duration-200"
-                                  >
-                                    {stage.key === 'cutting' ? 'Start Cutting' :
-                                     stage.key === 'stitching' ? 'Mark as Complete' :
-                                     stage.key === 'finishing' ? 'Mark as Complete' :
-                                     stage.key === 'packaging' ? 'Mark as Complete' : 'Next'} →
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">No jobs in this stage</h3>
+                  <p className="text-gray-600">There are currently no garments in the {activeStage.label} stage.</p>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ) : (
+                // Job Cards
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {getWorkflowsForStage(activeTab).map((workflow) => (
+                    <div 
+                      key={workflow._id} 
+                      className="border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all bg-white"
+                    >
+                      {/* Job Header */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-800">
+                            Order {generateCustomerId(workflow.billId)} – {workflow.customerName}
+                          </h3>
+                          {workflow.bill && (
+                            <span className="inline-block mt-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                              {workflow.bill.garmentType}
+                            </span>
+                          )}
+                          {workflow.bill && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              Due: {formatDate(workflow.bill.dueDate)}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          workflow.stage === 'delivered' ? 'bg-green-100 text-green-800' :
+                          workflow.stage === 'cutting' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {workflow.stage === 'delivered' ? 'Completed' :
+                           workflow.stage === 'cutting' ? 'Pending' : 'In Progress'}
+                        </span>
+                      </div>
+
+                      {/* Job Details - Three Column Layout */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        {/* Customer Details */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Customer Details</h4>
+                          <div className="space-y-1 text-sm">
+                            <p className="text-gray-600">Name: {workflow.customerName}</p>
+                            {workflow.bill && (
+                              <>
+                                <p className="text-gray-600">Phone: {workflow.bill.phone}</p>
+                                <p className="text-gray-600">Email: -</p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bill Information */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Bill Information</h4>
+                          {workflow.bill && (
+                            <div className="space-y-1 text-sm">
+                              <p className="text-gray-600">Bill #: {generateCustomerId(workflow.billId)}</p>
+                              <p className="text-gray-600">Total: ₹{(workflow.bill.rate * workflow.bill.quantity).toFixed(2)}</p>
+                              <p className="text-gray-600">Advance: ₹{(workflow.bill.rate * workflow.bill.quantity - workflow.bill.balance).toFixed(2)}</p>
+                              <p className="text-gray-600">Balance: ₹{workflow.bill.balance.toFixed(2)}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Measurements */}
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Measurements</h4>
+                          {workflow.bill && workflow.bill.measurements && (
+                            <div className="space-y-1 text-sm">
+                              {Object.entries(workflow.bill.measurements)
+                                .filter(([_, value]) => value)
+                                .slice(0, 4)
+                                .map(([key, value]) => (
+                                  <p key={key} className="text-gray-600 capitalize">
+                                    {key.replace(/([A-Z])/g, ' $1').trim()}: {String(value)}"
+                                  </p>
+                                ))
+                              }
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Design Images */}
+                      {workflow.bill?.images && workflow.bill.images.length > 0 && (
+                        <div className="mb-6">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Design Images</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {workflow.bill.images.slice(0, 4).map((img: string, idx: number) => (
+                              <div key={idx} className={`p-2 rounded-xl ${activeStage.bgColor} border border-gray-100`}>
+                                <img 
+                                  src={img} 
+                                  alt={`Design ${idx + 1}`} 
+                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200" 
+                                />
+                              </div>
+                            ))}
+                            {workflow.bill.images.length > 4 && (
+                              <div className={`w-16 h-16 rounded-xl ${activeStage.bgColor} border border-gray-100 flex items-center justify-center`}>
+                                <span className="text-xs font-medium text-gray-600">+{workflow.bill.images.length - 4}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Button */}
+                      <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                        <button
+                          onClick={() => handleDeleteJob(workflow._id!, workflow.customerName)}
+                          disabled={deleteLoading === workflow._id}
+                          className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          {deleteLoading === workflow._id ? 'Deleting...' : 'Delete Job'}
+                        </button>
+                        
+                        {activeTab !== 'delivered' && (
+                          <button
+                            onClick={() => moveToNextStage(workflow._id!, workflow.stage)}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 hover:from-purple-700 hover:to-pink-600"
+                          >
+                            {activeTab === 'cutting' ? 'Start Cutting' :
+                             activeTab === 'stitching' ? 'Ready to Finish' :
+                             activeTab === 'finishing' ? 'Ready to Package' :
+                             activeTab === 'packaging' ? 'Mark as Delivered' :
+                             'Complete'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

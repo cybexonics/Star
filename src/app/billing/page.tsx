@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { QRCodeSVG } from 'qrcode.react';
 
 export default function BillingPage() {
   const [formData, setFormData] = useState({
@@ -13,7 +12,6 @@ export default function BillingPage() {
     rate: 0,
     advance: 0,
     dueDate: '',
-    tailorNotes: '',
     measurements: {
       length: '',
       shoulder: '',
@@ -32,22 +30,31 @@ export default function BillingPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [penThickness, setPenThickness] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [upi, setUpi] = useState<string>('');
+  const [billNo, setBillNo] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const subtotal = formData.quantity * formData.rate;
   const balance = subtotal - formData.advance;
-  
+
   const generateBillNo = () => {
     return `ST${Date.now().toString().slice(-6)}`;
   };
 
-  const generateQRCode = (balance: number, billNo: string) => {
-    return `upi://pay?pa=raghukatti9912-1@okhdfcbank&pn=StarTailors&am=${balance}&cu=INR&tn=Order:${billNo}`;
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/upi');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.upi) setUpi(data.upi);
+      } catch (err) {
+        // fallback
+      }
+    })();
+  }, []);
 
-  const billNo = generateBillNo();
-  const qrCodeData = generateQRCode(balance, billNo);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name.startsWith('measurements.')) {
       const measurementField = name.split('.')[1];
@@ -71,11 +78,12 @@ export default function BillingPage() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
+      const newImages: string[] = [];
       Array.from(files).forEach(file => {
         const reader = new FileReader();
         reader.onload = (event) => {
           if (event.target?.result) {
-            setImages(prev => [...prev, event.target!.result as string]);
+            setImages(prev => [...prev, event.target?.result as string]);
           }
         };
         reader.readAsDataURL(file);
@@ -86,12 +94,10 @@ export default function BillingPage() {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     setIsDrawing(true);
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.beginPath();
@@ -101,19 +107,16 @@ export default function BillingPage() {
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
-    
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.lineWidth = penThickness;
       ctx.lineCap = 'round';
-      ctx.strokeStyle = '#000';
+      ctx.strokeStyle = '#6a24e6';
       ctx.lineTo(x, y);
       ctx.stroke();
     }
@@ -136,6 +139,8 @@ export default function BillingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const newBillNo = generateBillNo();
+    setBillNo(newBillNo);
 
     try {
       let drawings: string[] = [];
@@ -149,7 +154,7 @@ export default function BillingPage() {
 
       const billData = {
         ...formData,
-        billNo,
+        billNo: newBillNo,
         measurements: Object.fromEntries(
           Object.entries(formData.measurements).map(([key, value]) => [
             key,
@@ -163,14 +168,11 @@ export default function BillingPage() {
 
       const response = await fetch('/api/billing', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(billData),
       });
 
       const result = await response.json();
-
       if (result.success) {
         setShowPreview(true);
       } else {
@@ -193,7 +195,6 @@ export default function BillingPage() {
       rate: 0,
       advance: 0,
       dueDate: '',
-      tailorNotes: '',
       measurements: {
         length: '',
         shoulder: '',
@@ -208,192 +209,118 @@ export default function BillingPage() {
     setImages([]);
     clearCanvas();
     setShowPreview(false);
-  };
-
-  const handlePrint = () => {
-    window.print();
+    setBillNo('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   if (showPreview) {
     return (
-      <div className="min-h-screen p-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="card mb-6 print:hidden">
-            <div className="flex justify-between items-center">
-              <h1 className="heading text-3xl">Bill Preview - {billNo}</h1>
-              <div className="space-x-4">
-                <button onClick={handlePrint} className="btn-primary">Print Bill</button>
-                <button onClick={resetForm} className="btn-primary">New Bill</button>
-                <Link href="/workflow" className="btn-primary inline-block">Go to Workflow</Link>
-                <button onClick={() => setShowPreview(false)} className="bg-[#800F2F] text-white px-4 py-2 rounded-md hover:bg-[#590D22] transition-colors">Close</button>
-              </div>
+      <div className="min-h-screen bg-surface-100 p-4 md:p-6">
+        <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-brand-600">Billing Preview</h1>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => window.print()} 
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all"
+              >
+                Print Bill
+              </button>
+              <button 
+                onClick={resetForm} 
+                className="px-4 py-2 border-2 border-brand-300 text-brand-600 rounded-lg hover:bg-brand-50 transition-colors"
+              >
+                New Bill
+              </button>
+              <Link 
+                href="/workflow" 
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all"
+              >
+                Go to Workflow
+              </Link>
             </div>
           </div>
-
-          {/* Invoice Layout */}
-          <div className="bg-white border border-gray-300 rounded-lg shadow-lg print:shadow-none print:border-0">
-            {/* Header */}
-            <div className="border-b-2 border-[#A4133C] p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-3xl font-bold text-[#590D22]">STAR TAILORS</h1>
-                  <p className="text-[#800F2F]">Craftsmanship Meets Precision</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-[#590D22]">Bill No: {billNo}</p>
-                  <p className="text-[#800F2F]">Date: {new Date().toLocaleDateString()}</p>
-                </div>
-              </div>
+          
+          <div className="rounded-lg p-6 border-2 border-gray-100 break-inside-avoid">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-brand-600">STAR TAILORS</h2>
+              <p className="text-gray-600">Business Management System</p>
             </div>
-
-            {/* Main Content - Two Columns */}
-            <div className="grid lg:grid-cols-2 gap-6 p-6">
-              {/* Left Column */}
-              <div className="space-y-6">
-                {/* Customer Details */}
-                <div>
-                  <h3 className="font-bold text-lg border-b border-gray-300 pb-2 mb-3">Customer Details</h3>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Name:</span> {formData.customerName}</p>
-                    <p><span className="font-medium">Phone:</span> {formData.phone}</p>
-                    <p><span className="font-medium">Garment:</span> {formData.garmentType}</p>
-                    <p><span className="font-medium">Due Date:</span> {new Date(formData.dueDate).toLocaleDateString()}</p>
-                  </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h3 className="font-bold text-lg text-brand-600 border-b-2 border-gray-100 pb-3 mb-4">Customer Details</h3>
+                <div className="space-y-3">
+                  <p><span className="font-semibold text-gray-800">Name:</span> {formData.customerName}</p>
+                  <p><span className="font-semibold text-gray-800">Phone:</span> {formData.phone}</p>
+                  <p><span className="font-semibold text-gray-800">Garment:</span> {formData.garmentType}</p>
+                  <p><span className="font-semibold text-gray-800">Due Date:</span> {formData.dueDate}</p>
                 </div>
-
-                {/* Measurements */}
-                <div>
-                  <h3 className="font-bold text-lg border-b border-gray-300 pb-2 mb-3">Measurements</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {Object.entries(formData.measurements).map(([key, value]) => 
-                      value ? (
-                        <p key={key}>
-                          <span className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span> {value}"
-                        </p>
-                      ) : null
-                    )}
-                  </div>
+                
+                <h3 className="font-bold text-lg text-brand-600 border-b-2 border-gray-100 pb-3 mt-8 mb-4">Measurements (inches)</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(formData.measurements).map(([key, value]) => (
+                    <p key={key} className="text-sm">
+                      <span className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span> {value}
+                    </p>
+                  ))}
                 </div>
-
-                {/* Tailor Notes */}
-                {formData.tailorNotes && (
-                  <div>
-                    <h3 className="font-bold text-lg border-b border-gray-300 pb-2 mb-3">Tailor Notes</h3>
-                    <p className="text-sm bg-yellow-50 p-3 rounded border">{formData.tailorNotes}</p>
-                  </div>
-                )}
-
-                {/* Design Images */}
+                
+                {/* Design Images Section */}
                 {images.length > 0 && (
-                  <div>
-                    <h3 className="font-bold text-lg border-b border-gray-300 pb-2 mb-3">Design Images</h3>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="mt-8">
+                    <h3 className="font-bold text-lg text-brand-600 border-b-2 border-gray-100 pb-3 mb-4">Design Images</h3>
+                    <div className="flex flex-wrap gap-4">
                       {images.map((image, index) => (
-                        <img key={index} src={image} alt={`Design ${index + 1}`} className="w-full h-20 object-cover rounded border" />
+                        <div key={index} className="border-2 border-gray-200 rounded-lg p-2">
+                          <img 
+                            src={image} 
+                            alt={`Design ${index + 1}`} 
+                            className="w-32 h-32 object-contain rounded border border-gray-100 print:w-24 print:h-24"
+                          />
+                        </div>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Bill Table */}
-                <div>
-                  <h3 className="font-bold text-lg border-b border-gray-300 pb-2 mb-3">Bill Details</h3>
-                  <table className="w-full border-collapse border border-gray-300">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border border-gray-300 p-2 text-left">Sr.No</th>
-                        <th className="border border-gray-300 p-2 text-left">Description</th>
-                        <th className="border border-gray-300 p-2 text-center">Qty</th>
-                        <th className="border border-gray-300 p-2 text-right">Rate</th>
-                        <th className="border border-gray-300 p-2 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="border border-gray-300 p-2">1</td>
-                        <td className="border border-gray-300 p-2 capitalize">{formData.garmentType} Tailoring</td>
-                        <td className="border border-gray-300 p-2 text-center">{formData.quantity}</td>
-                        <td className="border border-gray-300 p-2 text-right">₹{formData.rate.toFixed(2)}</td>
-                        <td className="border border-gray-300 p-2 text-right">₹{subtotal.toFixed(2)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Totals */}
-                <div className="border border-gray-300 rounded">
-                  <div className="bg-gray-100 p-3 font-bold border-b border-gray-300">Payment Summary</div>
-                  <div className="p-3 space-y-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>₹{subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Advance Paid:</span>
-                      <span>₹{formData.advance.toFixed(2)}</span>
-                    </div>
-                    <div className="border-t pt-2 flex justify-between font-bold text-lg">
-                      <span>Balance Due:</span>
-                      <span>₹{balance.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* QR Code */}
-                {balance > 0 && (
-                  <div className="text-center border border-gray-300 rounded p-4">
-                    <h4 className="font-bold mb-2">Pay via UPI</h4>
-                    <div className="bg-white p-2 inline-block border border-gray-300 rounded">
-                      <QRCodeSVG 
-                        value={qrCodeData} 
-                        size={120} 
-                        includeMargin={true}
-                        className="mx-auto"
-                      />
-                    </div>
-                    <p className="text-xs mt-2 text-gray-600">Scan to pay ₹{balance.toFixed(2)}</p>
-                    <p className="text-xs text-gray-500 mt-1 break-all">{qrCodeData}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t-2 border-gray-300 mt-6">
-              <div className="text-center py-4 text-sm text-gray-600">
-                Thank you for choosing Star Tailors!
-              </div>
               
-              {/* Cut Line */}
-              <div className="border-t border-dashed border-gray-400 my-4"></div>
-              
-              {/* Tailor Copy */}
-              <div className="bg-gray-50 p-4 border-b border-gray-300">
-                <h4 className="font-bold text-center">--- TAILOR MANAGEMENT COPY ---</h4>
-                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
-                  <div>
-                    <p><strong>Customer:</strong> {formData.customerName}</p>
-                    <p><strong>Phone:</strong> {formData.phone}</p>
-                    <p><strong>Bill No:</strong> {billNo}</p>
+              <div>
+                <h3 className="font-bold text-lg text-brand-600 border-b-2 border-gray-100 pb-3 mb-4">Bill Details</h3>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-surface-soft">
+                      <th className="border-2 border-gray-100 p-3 text-left font-semibold">Description</th>
+                      <th className="border-2 border-gray-100 p-3 text-center font-semibold">Qty</th>
+                      <th className="border-2 border-gray-100 p-3 text-right font-semibold">Rate</th>
+                      <th className="border-2 border-gray-100 p-3 text-right font-semibold">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border-2 border-gray-100 p-3">{formData.garmentType} Tailoring</td>
+                      <td className="border-2 border-gray-100 p-3 text-center">{formData.quantity}</td>
+                      <td className="border-2 border-gray-100 p-3 text-right">₹{formData.rate.toFixed(2)}</td>
+                      <td className="border-2 border-gray-100 p-3 text-right">₹{subtotal.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                
+                <div className="mt-6 space-y-3">
+                  <div className="flex justify-between text-lg">
+                    <span className="font-semibold">Subtotal:</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
                   </div>
-                  <div>
-                    <p><strong>Garment:</strong> {formData.garmentType}</p>
-                    <p><strong>Due Date:</strong> {new Date(formData.dueDate).toLocaleDateString()}</p>
-                    <p><strong>Balance:</strong> ₹{balance.toFixed(2)}</p>
+                  <div className="flex justify-between text-lg">
+                    <span className="font-semibold">Advance Paid:</span>
+                    <span>₹{formData.advance.toFixed(2)}</span>
                   </div>
-                </div>
-              </div>
-              
-              {/* Customer Copy */}
-              <div className="bg-blue-50 p-4">
-                <h4 className="font-bold text-center">--- CUSTOMER COPY ---</h4>
-                <div className="text-center mt-2 text-sm">
-                  <p><strong>Bill No:</strong> {billNo} | <strong>Balance:</strong> ₹{balance.toFixed(2)}</p>
-                  <p>Please keep this receipt for reference</p>
+                  <div className="flex justify-between font-bold text-lg border-t-2 border-gray-100 pt-3">
+                    <span>Balance Due:</span>
+                    <span className="text-brand-600">₹{balance.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -404,259 +331,314 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="card mb-6">
-          <div className="flex justify-between items-center">
-            <h1 className="heading text-3xl">Billing Department</h1>
-            <div className="space-x-4">
-              <Link href="/billing/list" className="btn-primary">View Recent Bills</Link>
-              <Link href="/" className="btn-primary">Back to Home</Link>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Customer Details */}
-          <div className="card">
-            <h2 className="heading text-2xl mb-6">Customer Details</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="label text-sm mb-2 block">Customer Name *</label>
-                <input
-                  type="text"
-                  name="customerName"
-                  value={formData.customerName}
-                  onChange={handleInputChange}
-                  required
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="label text-sm mb-2 block">Phone Number *</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="label text-sm mb-2 block">Garment Type *</label>
-                <select
-                  name="garmentType"
-                  value={formData.garmentType}
-                  onChange={handleInputChange}
-                  required
-                  className="input-field w-full"
-                >
-                  <option value="">Select Type</option>
-                  <option value="shirt">Shirt</option>
-                  <option value="pant">Pant</option>
-                  <option value="suit">Suit</option>
-                  <option value="dress">Dress</option>
-                  <option value="kurta">Kurta</option>
-                  <option value="blouse">Blouse</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="label text-sm mb-2 block">Due Date *</label>
-                <input
-                  type="date"
-                  name="dueDate"
-                  value={formData.dueDate}
-                  onChange={handleInputChange}
-                  required
-                  className="input-field w-full"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Pricing Details */}
-          <div className="card">
-            <h2 className="heading text-2xl mb-6">Pricing Details</h2>
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="label text-sm mb-2 block">Quantity *</label>
-                <input
-                  type="number"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={handleInputChange}
-                  min="1"
-                  required
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="label text-sm mb-2 block">Rate (₹) *</label>
-                <input
-                  type="number"
-                  name="rate"
-                  value={formData.rate}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  required
-                  className="input-field w-full"
-                />
-              </div>
-              <div>
-                <label className="label text-sm mb-2 block">Advance (₹)</label>
-                <input
-                  type="number"
-                  name="advance"
-                  value={formData.advance}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  className="input-field w-full"
-                />
-              </div>
+    <div className="min-h-screen bg-surface-100 p-4 md:p-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className="flex flex-col md:flex-row items-center justify-between mb-8 pb-6 border-b-2 border-gray-100 gap-4">
+            <div className="flex items-center gap-4">
+              <Link 
+                href="/admin" 
+                className="flex items-center gap-2 text-brand-600 hover:text-brand-700 font-medium transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span>Back</span>
+              </Link>
+              <span className="text-gray-300">|</span>
+              <Link href="/admin" className="text-brand-600 hover:text-brand-700 font-medium transition-colors">
+                Admin Dashboard
+              </Link>
             </div>
             
-            <div className="grid md:grid-cols-3 gap-4 pt-4 border-t">
-              <div className="bg-gray-50 p-3 rounded-md">
-                <span className="label text-sm">Subtotal:</span>
-                <div className="text-lg font-bold text-gray-900">₹{subtotal.toFixed(2)}</div>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-md">
-                <span className="label text-sm">Advance:</span>
-                <div className="text-lg font-bold text-gray-900">₹{formData.advance.toFixed(2)}</div>
-              </div>
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-3 rounded-md">
-                <span className="label text-sm">Balance:</span>
-                <div className="text-xl font-bold text-gray-900">₹{balance.toFixed(2)}</div>
-              </div>
+            <h1 className="text-3xl font-bold text-brand-600 text-center">Billing System</h1>
+            
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-5 py-2 border-2 border-brand-300 text-brand-600 rounded-lg hover:bg-brand-50 font-medium transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                form="billingForm"
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg hover:shadow-lg disabled:opacity-50 font-medium transition-all"
+              >
+                Generate & Preview
+              </button>
             </div>
           </div>
 
-          {/* Measurements */}
-          <div className="card">
-            <h2 className="heading text-2xl mb-6">Measurements</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Object.entries(formData.measurements).map(([key, value]) => (
-                <div key={key}>
-                  <label className="label text-sm mb-2 block capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
+          <form id="billingForm" onSubmit={handleSubmit}>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-brand-600">Billing Department</h2>
+            </div>
+            
+            <div className="mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label htmlFor="customerName" className="block text-sm font-semibold text-gray-800 mb-2">
+                    Customer Name *
                   </label>
                   <input
-                    type="number"
-                    name={`measurements.${key}`}
-                    value={value}
+                    id="customerName"
+                    type="text"
+                    name="customerName"
+                    value={formData.customerName}
                     onChange={handleInputChange}
-                    step="0.1"
-                    placeholder="inches"
-                    className="input-field w-full"
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                    placeholder="Customer Name"
                   />
                 </div>
-              ))}
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-semibold text-gray-800 mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                    placeholder="Phone Number"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div>
+                  <label htmlFor="garmentType" className="block text-sm font-semibold text-gray-800 mb-2">
+                    Select Type *
+                  </label>
+                  <select
+                    id="garmentType"
+                    name="garmentType"
+                    value={formData.garmentType}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Select type</option>
+                    <option value="shirt">Shirt</option>
+                    <option value="pant">Pant</option>
+                    <option value="suit">Suit</option>
+                    <option value="dress">Dress</option>
+                    <option value="kurta">Kurta</option>
+                    <option value="blouse">Blouse</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="quantity" className="block text-sm font-semibold text-gray-800 mb-2">
+                    Qty
+                  </label>
+                  <input
+                    id="quantity"
+                    type="number"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    min="1"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="rate" className="block text-sm font-semibold text-gray-800 mb-2">
+                    Rate *
+                  </label>
+                  <input
+                    id="rate"
+                    type="number"
+                    name="rate"
+                    value={formData.rate}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="advance" className="block text-sm font-semibold text-gray-800 mb-2">
+                    Advance
+                  </label>
+                  <input
+                    id="advance"
+                    type="number"
+                    name="advance"
+                    value={formData.advance}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="dueDate" className="block text-sm font-semibold text-gray-800 mb-2">
+                    Due Date
+                  </label>
+                  <input
+                    id="dueDate"
+                    type="date"
+                    name="dueDate"
+                    value={formData.dueDate}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Tailor Notes */}
-          <div className="card">
-            <h2 className="heading text-2xl mb-6">Tailor Notes</h2>
-            <textarea
-              name="tailorNotes"
-              value={formData.tailorNotes}
-              onChange={handleInputChange}
-              placeholder="Special instructions for the tailor..."
-              rows={3}
-              className="input-field w-full"
-            />
-          </div>
+            <div className="mb-8">
+              <h3 className="text-lg font-bold text-brand-600 mb-4">Measurements (inches)</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {['length', 'shoulder', 'sleeve', 'chest', 'waist', 'hips', 'frontNeck', 'backNeck'].map(field => (
+                  <div key={field}>
+                    <label htmlFor={`measurement-${field}`} className="block text-sm font-semibold text-gray-800 mb-2">
+                      {field.replace(/([A-Z])/g, ' $1').toUpperCase()}
+                    </label>
+                    <input
+                      id={`measurement-${field}`}
+                      type="number"
+                      name={`measurements.${field}`}
+                      value={formData.measurements[field as keyof typeof formData.measurements]}
+                      onChange={handleInputChange}
+                      step="0.1"
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                      placeholder={field}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
 
-          {/* Design Images */}
-          <div className="card">
-            <h2 className="heading text-2xl mb-6">Design Images</h2>
-            <div className="space-y-4">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-purple-50 file:to-blue-50 file:text-gray-700 hover:file:bg-gradient-to-r hover:file:from-purple-100 hover:file:to-blue-100"
-              />
-              {images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img src={image} alt={`Design ${index + 1}`} className="w-full h-32 object-cover rounded-md" />
+            {/* Images + Drawing Section - Two Column Layout */}
+            <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* LEFT: Images Section */}
+              <div>
+                <h3 className="text-lg font-bold text-brand-600 mb-4">Images</h3>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center h-full flex flex-col justify-center bg-white">
+                  <input
+                    ref={fileInputRef}
+                    id="imageUpload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <label htmlFor="imageUpload" className="cursor-pointer block">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                       <button
                         type="button"
-                        onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg text-sm hover:shadow-lg transition-all"
                       >
-                        ×
+                        Choose Files
                       </button>
+                      <p className="text-gray-500 text-xs">Drop or click to browse</p>
                     </div>
-                  ))}
+                  </label>
+                  
+                  {/* Image previews */}
+                  {images.length > 0 && (
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      {images.map((image, index) => (
+                        <div key={index} className="relative">
+                          <img 
+                            src={image} 
+                            alt={`Preview ${index + 1}`} 
+                            className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Drawing Pad */}
-          <div className="card">
-            <h2 className="heading text-2xl mb-6">Drawing Pad</h2>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <label className="label text-sm">Pen Thickness:</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={penThickness}
-                  onChange={(e) => setPenThickness(parseInt(e.target.value))}
-                  className="w-32"
-                />
-                <span className="label text-sm">{penThickness}px</span>
-                <button
-                  type="button"
-                  onClick={clearCanvas}
-                  className="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition-colors"
-                >
-                  Clear
-                </button>
               </div>
-              <canvas
-                ref={canvasRef}
-                width={420}
-                height={140}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                className="border border-gray-300 rounded-md cursor-crosshair w-full h-48"
-                style={{ maxWidth: '100%', height: '140px' }}
-              />
-            </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-4">
-            <button
-              type="button"
-              onClick={resetForm}
-              className="bg-gray-500 text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-600 transition-colors"
-            >
-              Reset
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary px-8 py-3 text-lg disabled:opacity-50"
-            >
-              {isSubmitting ? 'Creating...' : 'Generate & Preview'}
-            </button>
-          </div>
-        </form>
+              {/* RIGHT: Drawing Section */}
+              <div>
+                <h3 className="text-lg font-bold text-brand-600 mb-4">Drawing</h3>
+                <div className="flex flex-col h-full">
+                  {/* Drawing Tools - Horizontal */}
+                  <div className="flex gap-2 p-3 rounded-lg mb-3 bg-surface-soft">
+                    <button
+                      type="button"
+                      className="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded text-xs font-medium hover:shadow-md transition-all"
+                    >
+                      Pen
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-2 bg-gray-200 text-gray-800 rounded text-xs font-medium hover:bg-gray-300 transition-colors"
+                    >
+                      Eraser
+                    </button>
+                    <div className="w-6 h-6 bg-brand-600 rounded border border-gray-300 cursor-pointer"></div>
+                    <select
+                      value={penThickness}
+                      onChange={(e) => setPenThickness(parseInt(e.target.value))}
+                      className="px-2 py-1 border border-gray-300 rounded text-xs"
+                    >
+                      <option value="1">1px</option>
+                      <option value="2">2px</option>
+                      <option value="3">3px</option>
+                      <option value="4">4px</option>
+                      <option value="5">5px</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={clearCanvas}
+                      className="px-3 py-2 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 transition-colors ml-auto"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  {/* Drawing Canvas */}
+                  <div className="flex-1 border-2 border-gray-300 rounded-lg p-2 bg-white">
+                    <canvas
+                      ref={canvasRef}
+                      width={600}
+                      height={300}
+                      onMouseDown={startDrawing}
+                      onMouseMove={draw}
+                      onMouseUp={stopDrawing}
+                      onMouseLeave={stopDrawing}
+                      className="border border-gray-300 rounded cursor-crosshair w-full h-full bg-white"
+                      aria-label="Drawing pad for garment designs"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-4 pt-4">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg hover:shadow-lg disabled:opacity-50 font-medium transition-all"
+              >
+                {isSubmitting ? 'Generating...' : 'Generate & Preview'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

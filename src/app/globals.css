@@ -2,48 +2,212 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@300;400;500;600;700;800&display=swap');
+@import '../styles/theme.css';
 
 @layer base {
   * {
     font-family: 'Inter', sans-serif;
   }
-  
+
   body {
-    background-color: #FFF0F3;
+    background-color: var(--page-background);
+    color: var(--text-primary);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', sans-serif;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-gradient-to-r from-[#FF4D6D] to-[#A4133C] text-white rounded-md px-4 py-2 font-medium shadow-md hover:from-[#C9184A] hover:to-[#800F2F] hover:shadow-lg transition-all duration-200;
+    @apply bg-gradient-to-r from-brand-400 to-brand-600 text-white rounded-md px-4 py-2 font-medium shadow-soft hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
   }
-  
+
+  .btn-secondary {
+    @apply border border-surface-border bg-surface text-text-primary rounded-md px-4 py-2 font-medium hover:bg-surface-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  }
+
   .input-field {
-    @apply border border-[#FFB3C1] rounded-md bg-white placeholder-[#C9184A] px-3 py-2 focus:ring-2 focus:ring-[#FF4D6D] focus:border-[#FF4D6D] transition-colors;
+    @apply border border-surface-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent;
   }
-  
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-[#FFCCD5] p-6;
+
+  .textarea-field {
+    @apply border border-surface-border rounded-md px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent;
   }
-  
-  .heading {
-    @apply font-bold text-[#590D22];
-  }
-  
+
   .label {
-    @apply text-[#800F2F] font-medium;
+    @apply text-sm font-medium text-text-primary;
   }
-  
-  .success-alert {
-    @apply bg-[#FFB3C1] text-[#590D22] p-3 rounded-md;
+
+  .heading-lg {
+    @apply text-4xl font-bold text-brand-600;
   }
-  
-  .warning-alert {
-    @apply bg-[#FF8FA3] text-[#800F2F] p-3 rounded-md;
+
+  .heading-md {
+    @apply text-2xl font-bold text-brand-600;
   }
-  
-  .danger-alert {
-    @apply bg-[#FF4D6D] text-white p-3 rounded-md;
+}
+
+/* Print Styles for A4 */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+    color: black;
+    font-size: 12px;
+  }
+
+  /* Hide non-printable elements */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure the bill container fits within A4 */
+  .max-w-5xl {
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 5mm !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Remove backgrounds and shadows for printing */
+  .bg-white\/80, .backdrop-blur-sm, .shadow-lg, .shadow-xl, .rounded-2xl, .rounded-3xl {
+    background: white !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Ensure proper page breaks */
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+
+  /* Reduce spacing for print */
+  .p-6, .p-4, .p-3 {
+    padding: 5px !important;
+  }
+
+  .m-6, .m-4, .m-3 {
+    margin: 5px !important;
+  }
+
+  .mb-6, .mb-4, .mb-3 {
+    margin-bottom: 5px !important;
+  }
+
+  .mt-6, .mt-4, .mt-3 {
+    margin-top: 5px !important;
+  }
+
+  .py-6, .py-4, .py-3 {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+  }
+
+  .pb-6, .pb-4, .pb-3 {
+    padding-bottom: 5px !important;
+  }
+
+  .pt-6, .pt-4, .pt-3 {
+    padding-top: 5px !important;
+  }
+
+  /* Ensure tables fit properly */
+  table {
+    font-size: 10px !important;
+    page-break-inside: avoid;
+    width: 100%;
+  }
+
+  th, td {
+    padding: 3px !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Ensure QR code prints properly */
+  .qr-code-container {
+    page-break-inside: avoid;
+    max-width: 100px;
+    max-height: 100px;
+  }
+
+  /* Remove decorative elements for print */
+  .absolute, .pointer-events-none, .blur-3xl {
+    display: none !important;
+  }
+
+  /* Ensure text fits */
+  .text-sm {
+    font-size: 10px !important;
+  }
+
+  .text-xs {
+    font-size: 9px !important;
+  }
+
+  .text-base {
+    font-size: 11px !important;
+  }
+
+  /* Ensure images fit and print properly */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Ensure design images print at appropriate size */
+  .w-32 {
+    width: 60px !important;
+  }
+
+  .h-32 {
+    height: 60px !important;
+  }
+
+  /* Ensure grid layouts work for print */
+  .grid {
+    display: grid !important;
+  }
+
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Prevent overflow */
+  .overflow-hidden {
+    overflow: hidden !important;
+  }
+
+  /* Ensure all content stays on one page */
+  .min-h-screen {
+    min-height: auto !important;
+  }
+
+  /* Make sure the main bill container is optimized for A4 */
+  .max-w-5xl > div:first-child {
+    max-height: 287mm !important; /* A4 height minus margins */
+    overflow: hidden !important;
   }
 }

@@ -73,7 +73,9 @@ export async function POST(request: NextRequest) {
         subtotal,
         balance,
         status: 'pending' as const,
-        dueDate: new Date(body.dueDate)
+        dueDate: new Date(body.dueDate),
+        images: body.images || [],
+        drawings: body.drawings || []
       };
       
       const bill = mockDataStore.createBill(billData);

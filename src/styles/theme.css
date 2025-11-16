@@ -1,0 +1,175 @@
+/* Strict Purple Theme - Single Source of Truth */
+:root {
+  /* Brand Colors - EXACT HEX VALUES */
+  --brand-gradient-start: #7f3dff;
+  --brand-gradient-end: #5a14cc;
+  --brand-primary: #6a24e6;
+  --brand-secondary: #9f67ff;
+  
+  /* Surface Colors */
+  --surface: #ffffff;
+  --surface-soft: #fbf9ff;
+  --page-background: #f6f3ff;
+  --surface-border: rgba(99, 60, 255, 0.12);
+  
+  /* Text Colors */
+  --text-primary: #1f1f2e;
+  --text-muted: #6b6b7a;
+  
+  /* Status Colors */
+  --danger: #e23d5b;
+  
+  /* New Gradient Colors for Homepage and Admin Dashboard */
+  --purple-600: #9333ea;
+  --purple-700: #7e22ce;
+  --pink-500: #ec4899;
+  --pink-600: #db2777;
+  
+  /* Spacing Scale (STRICT) */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 16px;
+  --s4: 24px;
+  --s5: 32px;
+  
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  
+  /* Shadows */
+  --shadow-soft: 0 6px 30px rgba(106, 36, 230, 0.06);
+  
+  /* Alpha Modifiers for Transparency */
+  --alpha-hover: 0.08;
+  --alpha-active: 0.12;
+  --alpha-focus: 0.18;
+}
+
+/* Global Overrides */
+body {
+  background-color: var(--page-background);
+  color: var(--text-primary);
+}
+
+/* Ensure no blue-tint in any gradient */
+.gradient-brand {
+  background: linear-gradient(135deg, var(--brand-gradient-start), var(--brand-gradient-end));
+  /* Pure purple only: #7f3dff to #5a14cc - NO BLUE TINT */
+}
+
+.gradient-brand-reverse {
+  background: linear-gradient(135deg, var(--brand-gradient-end), var(--brand-gradient-start));
+}
+
+/* Button Base Styles */
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-gradient-start), var(--brand-gradient-end));
+  color: var(--surface);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:active {
+  opacity: 0.8;
+}
+
+.btn-secondary {
+  background: var(--surface-soft);
+  color: var(--brand-primary);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--surface);
+}
+
+/* Input Focus Ring */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 4px rgba(106, 36, 230, var(--alpha-focus));
+}
+
+/* Card Styles */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: var(--s5);
+}
+
+/* KPI Card */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  padding: var(--s4);
+  text-align: center;
+}
+
+.kpi-card.highlight {
+  background: linear-gradient(135deg, var(--brand-gradient-start), var(--brand-gradient-end));
+  color: var(--surface);
+  border: none;
+}
+
+/* Label Styles */
+label {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  display: block;
+  margin-bottom: var(--s2);
+}
+
+/* Accessibility: Focus Visible State */
+*:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* No Blue Tint Verification - All Gradients */
+.gradient-verification {
+  /* START: #7f3dff (R:127, G:61, B:255) - PURPLE with NO BLUE DOMINANCE */
+  /* END: #5a14cc (R:90, G:20, B:204) - PURE PURPLE */
+  /* Direction: 135deg ensures smooth purple transition */
+  background: linear-gradient(135deg, #7f3dff 0%, #5a14cc 100%);
+}
+
+/* Badge Styles */
+.badge-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-progress {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-completed {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.badge-delivered {
+  background-color: #ddd6fe;
+  color: #5b21b6;
+}
