@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function BillingPage() {
   const [formData, setFormData] = useState({
@@ -322,6 +323,26 @@ export default function BillingPage() {
                     <span className="text-brand-600">₹{balance.toFixed(2)}</span>
                   </div>
                 </div>
+
+                {/* QR Code Section */}
+                {upi && balance > 0 && (
+                  <div className="mt-8 flex flex-col items-center">
+                    <div className="bg-gradient-to-r from-purple-600 to-pink-500 p-1 rounded-lg mb-3">
+                      <div className="bg-white p-3 rounded-md">
+                        <QRCodeCanvas 
+                          value={`upi://pay?pa=${upi}&pn=StarTailors&am=${balance}&cu=INR`}
+                          size={128}
+                          level="H"
+                          includeMargin={true}
+                          className="print:w-24 print:h-24"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Pay via UPI</p>
+                    <p className="text-xs text-gray-600">Scan to pay ₹{balance.toFixed(2)}</p>
+                    <p className="text-xs text-gray-600">UPI: {upi}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

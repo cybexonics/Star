@@ -1,11 +1,9 @@
 {
-  "/page": "app/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/api/admin/route": "app/api/admin/route.js",
-  "/api/admin/upi/route": "app/api/admin/upi/route.js",
-  "/api/billing/[id]/route": "app/api/billing/[id]/route.js",
   "/workflow/page": "app/workflow/page.js",
+  "/billing/page": "app/billing/page.js",
   "/api/workflow/route": "app/api/workflow/route.js",
-  "/api/billing/route": "app/api/billing/route.js",
-  "/billing/page": "app/billing/page.js"
+  "/admin/page": "app/admin/page.js",
+  "/page": "app/page.js",
+  "/api/admin/route": "app/api/admin/route.js",
+  "/api/admin/upi/route": "app/api/admin/upi/route.js"
 }

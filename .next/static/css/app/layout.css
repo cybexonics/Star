@@ -1479,6 +1479,9 @@ video {
   -o-object-fit: cover;
      object-fit: cover;
 }
+.p-1 {
+  padding: 4px;
+}
 .p-2 {
   padding: 8px;
 }
